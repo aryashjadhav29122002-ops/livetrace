@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LiveTrace — Location Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --card: #1a1a26;
+    --border: #2a2a3d;
+    --accent: #00ff88;
+    --accent2: #7c3aed;
+    --danger: #ff4444;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --glow: 0 0 20px rgba(0,255,136,0.3);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── SETUP SCREEN ── */
+  #setup-screen {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 20%, rgba(124,58,237,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 80% 80%, rgba(0,255,136,0.08) 0%, transparent 60%),
+      var(--bg);
+  }
+  .logo {
+    font-size: 2.4rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin-bottom: 0.3rem;
+  }
+  .logo span { color: var(--accent); }
+  .tagline {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 3rem;
+  }
+  .setup-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 480px;
+    position: relative;
+    overflow: hidden;
+  }
+  .setup-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+  }
+  .step-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .setup-card h2 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+  }
+  .setup-card p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 1.8rem;
+  }
+  .input-group {
+    margin-bottom: 1.2rem;
+  }
+  .input-group label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 1px;
+  }
+  .input-group input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .input-group input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,255,136,0.1);
+  }
+  .input-group input::placeholder { color: var(--muted); }
+
+  .btn {
+    width: 100%;
+    padding: 0.9rem;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    color: #000;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: var(--glow); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    margin-top: 0.8rem;
+  }
+  .btn-secondary:hover { background: rgba(0,255,136,0.08); }
+
+  .info-box {
+    background: rgba(0,255,136,0.05);
+    border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: var(--muted);
+    margin-top: 1.5rem;
+  }
+  .info-box strong { color: var(--accent); }
+
+  /* ── DASHBOARD ── */
+  #dashboard { display: none; flex-direction: column; min-height: 100vh; }
+
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .topbar-logo { font-size: 1.3rem; font-weight: 800; }
+  .topbar-logo span { color: var(--accent); }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.78rem;
+    font-family: 'Space Mono', monospace;
+  }
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+  .dot.live { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 1.5s infinite; }
+  .dot.waiting { background: #f59e0b; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .dashboard-body {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    flex: 1;
+    min-height: 0;
+  }
+  @media(max-width:768px) {
+    .dashboard-body { grid-template-columns: 1fr; }
+    #map-container { height: 55vh; }
+  }
+
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 1.5rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 0.9rem 1.2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .panel-body { padding: 1.2rem; }
+
+  .link-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--accent);
+    word-break: break-all;
+    line-height: 1.5;
+    margin-bottom: 0.8rem;
+  }
+  .copy-btn {
+    width: 100%;
+    padding: 0.7rem;
+    background: rgba(0,255,136,0.1);
+    border: 1px solid rgba(0,255,136,0.3);
+    border-radius: 8px;
+    color: var(--accent);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .copy-btn:hover { background: rgba(0,255,136,0.2); }
+  .whatsapp-btn {
+    width: 100%;
+    padding: 0.7rem;
+    background: rgba(37,211,102,0.1);
+    border: 1px solid rgba(37,211,102,0.3);
+    border-radius: 8px;
+    color: #25d366;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 0.5rem;
+    text-decoration: none;
+    display: block;
+    text-align: center;
+  }
+  .whatsapp-btn:hover { background: rgba(37,211,102,0.2); }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.9rem;
+  }
+  .stat-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.3rem;
+  }
+  .stat-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+  }
+  .stat-value.accent { color: var(--accent); }
+
+  .tracker-list { display: flex; flex-direction: column; gap: 0.6rem; }
+  .tracker-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.8rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .tracker-item:hover, .tracker-item.active { border-color: var(--accent); }
+  .tracker-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem; color: #000; flex-shrink: 0;
+  }
+  .tracker-info { flex: 1; min-width: 0; }
+  .tracker-name { font-size: 0.88rem; font-weight: 600; }
+  .tracker-time {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    margin-top: 0.1rem;
+  }
+  .no-trackers {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    padding: 1.5rem 0;
+    line-height: 1.6;
+  }
+
+  #map-container {
+    position: relative;
+    background: #0d0d18;
+  }
+  #map { width: 100%; height: 100%; min-height: 400px; }
+
+  .map-overlay {
+    position: absolute;
+    top: 1rem; right: 1rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    min-width: 180px;
+    z-index: 10;
+  }
+  .map-overlay-title {
+    font-size: 0.65rem;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  #live-coords {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--accent);
+    line-height: 1.7;
+  }
+  .no-location-msg {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    text-align: center;
+    color: var(--muted);
+    z-index: 5;
+    pointer-events: none;
+  }
+  .no-location-msg .big-icon { font-size: 3rem; margin-bottom: 0.8rem; }
+  .no-location-msg p { font-size: 0.9rem; line-height: 1.6; }
+
+  /* ── RECEIVER PAGE ── */
+  #receiver-screen {
+    display: none;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 2rem;
+    background:
+      radial-gradient(ellipse 60% 50% at 30% 30%, rgba(124,58,237,0.2) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 70% 70%, rgba(0,255,136,0.1) 0%, transparent 60%),
+      var(--bg);
+    text-align: center;
+  }
+  .receiver-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    max-width: 380px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+  .receiver-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+  }
+  .receiver-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+    display: block;
+  }
+  .receiver-card h2 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 0.7rem;
+  }
+  .receiver-card p {
+    color: var(--muted);
+    font-size: 0.88rem;
+    line-height: 1.7;
+    margin-bottom: 1.5rem;
+  }
+  #share-status {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    margin-top: 1rem;
+    padding: 0.7rem 1rem;
+    border-radius: 8px;
+    display: none;
+  }
+  #share-status.success {
+    background: rgba(0,255,136,0.1);
+    border: 1px solid rgba(0,255,136,0.3);
+    color: var(--accent);
+    display: block;
+  }
+  #share-status.error {
+    background: rgba(255,68,68,0.1);
+    border: 1px solid rgba(255,68,68,0.3);
+    color: var(--danger);
+    display: block;
+  }
+  #share-status.info {
+    background: rgba(124,58,237,0.1);
+    border: 1px solid rgba(124,58,237,0.3);
+    color: #a78bfa;
+    display: block;
+  }
+
+  .hidden { display: none !important; }
+  .toast {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    background: var(--accent); color: #000;
+    padding: 0.7rem 1.5rem;
+    border-radius: 100px;
+    font-weight: 700; font-size: 0.85rem;
+    z-index: 999; opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ SETUP SCREEN ═══════════════ -->
+<div id="setup-screen">
+  <div class="logo">Live<span>Trace</span></div>
+  <div class="tagline">Real-time location sharing</div>
+
+  <div class="setup-card">
+    <div class="step-label">⚡ Quick Setup</div>
+    <h2>Connect Firebase</h2>
+    <p>Enter your free Firebase project details below. This stores location data in real-time so you can track from any device.</p>
+
+    <div class="input-group">
+      <label>FIREBASE DATABASE URL</label>
+      <input type="text" id="fb-url" placeholder="https://your-project-default-rtdb.firebaseio.com"/>
+    </div>
+    <div class="input-group">
+      <label>TRACKING SESSION NAME (optional)</label>
+      <input type="text" id="session-name" placeholder="e.g. track-john"/>
+    </div>
+
+    <button class="btn btn-primary" onclick="startDashboard()">Generate Tracking Link →</button>
+    <button class="btn btn-secondary" onclick="useDemoMode()">Try Demo Mode (no Firebase)</button>
+
+    <div class="info-box">
+      <strong>How to get Firebase URL (free):</strong><br>
+      1. Go to <strong>console.firebase.google.com</strong><br>
+      2. Create a project → Realtime Database → Create database<br>
+      3. Copy the URL (ends in <strong>.firebaseio.com</strong>)<br>
+      4. Set rules to <strong>public read/write</strong> for testing
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ DASHBOARD ═══════════════ -->
+<div id="dashboard">
+  <div class="topbar">
+    <div class="topbar-logo">Live<span>Trace</span></div>
+    <div id="live-status" class="status-pill">
+      <div class="dot waiting" id="status-dot"></div>
+      <span id="status-text">Waiting for location...</span>
+    </div>
+    <button class="btn btn-secondary" style="width:auto;padding:0.4rem 1rem;font-size:0.85rem" onclick="resetApp()">New Session</button>
+  </div>
+
+  <div class="dashboard-body">
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <!-- Share Link -->
+      <div class="panel">
+        <div class="panel-header">
+          <span>Tracking Link</span>
+          <span>📎</span>
+        </div>
+        <div class="panel-body">
+          <div class="link-box" id="share-link-display">—</div>
+          <button class="copy-btn" onclick="copyLink()">📋 Copy Link</button>
+          <a class="whatsapp-btn" id="wa-share-btn" href="#" target="_blank">📱 Share on WhatsApp</a>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="panel">
+        <div class="panel-header"><span>Live Stats</span><span>📊</span></div>
+        <div class="panel-body">
+          <div class="stat-grid">
+            <div class="stat">
+              <div class="stat-label">Latitude</div>
+              <div class="stat-value accent" id="stat-lat">—</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Longitude</div>
+              <div class="stat-value accent" id="stat-lng">—</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Accuracy</div>
+              <div class="stat-value" id="stat-acc">—</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Last Update</div>
+              <div class="stat-value" id="stat-time">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Trackers -->
+      <div class="panel">
+        <div class="panel-header"><span>Tracked Devices</span><span>📍</span></div>
+        <div class="panel-body">
+          <div class="tracker-list" id="tracker-list">
+            <div class="no-trackers">
+              No devices yet.<br>Share the link to start tracking.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Map -->
+    <div id="map-container">
+      <div id="no-location-overlay" class="no-location-msg">
+        <div class="big-icon">🗺️</div>
+        <p>Map will show live location<br>once the link is opened</p>
+      </div>
+      <div id="map"></div>
+      <div class="map-overlay">
+        <div class="map-overlay-title">Live Coordinates</div>
+        <div id="live-coords">Waiting...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ RECEIVER SCREEN ═══════════════ -->
+<div id="receiver-screen">
+  <div class="receiver-card">
+    <span class="receiver-icon">📍</span>
+    <h2>Share Your Location</h2>
+    <p>Someone wants to track your live location. Click below to allow location access and start sharing.</p>
+    <button class="btn btn-primary" id="share-loc-btn" onclick="startSharingLocation()">Allow & Share Location</button>
+    <div id="share-status"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+window._fb = { initializeApp, getDatabase, ref, set, onValue };
+window._fbReady = true;
+window.dispatchEvent(new Event('fbReady'));
+</script>
+
+<!-- Google Maps -->
+<script>
+window.mapCallback = function() { window._mapsReady = true; window.dispatchEvent(new Event('mapsReady')); };
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU3-84&callback=mapCallback" async defer></script>
+
+<script>
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+let firebaseDB = null, firebaseRef = null, firebaseSet = null, firebaseOnValue = null;
+let map = null, marker = null, watchId = null;
+let sessionKey = '';
+let isDemo = false;
+let demoInterval = null;
+let trackers = {};
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+window.addEventListener('load', () => {
+  const params = new URLSearchParams(location.search);
+  const mode   = params.get('mode');
+  const key    = params.get('key');
+  const fbUrl  = params.get('fb');
+
+  if (mode === 'receive' && key) {
+    showReceiver(key, fbUrl);
+  } else {
+    document.getElementById('setup-screen').style.display = 'flex';
+  }
+});
+
+// ══════════════════════════════════════════
+//  SETUP → DASHBOARD
+// ══════════════════════════════════════════
+function startDashboard() {
+  const fbUrl = document.getElementById('fb-url').value.trim();
+  let name    = document.getElementById('session-name').value.trim();
+  if (!fbUrl) { showToast('Please enter Firebase URL'); return; }
+  if (!name) name = 'session-' + Math.random().toString(36).substr(2,6);
+  sessionKey = name;
+
+  waitForFB(() => {
+    try {
+      const app = window._fb.initializeApp({ databaseURL: fbUrl }, 'tracker-' + Date.now());
+      firebaseDB      = window._fb.getDatabase(app);
+      firebaseRef     = window._fb.ref;
+      firebaseSet     = window._fb.set;
+      firebaseOnValue = window._fb.onValue;
+      openDashboard();
+    } catch(e) {
+      showToast('Firebase error: ' + e.message);
+    }
+  });
+}
+
+function useDemoMode() {
+  isDemo = true;
+  let name = document.getElementById('session-name').value.trim();
+  if (!name) name = 'demo-' + Math.random().toString(36).substr(2,6);
+  sessionKey = name;
+  openDashboard();
+}
+
+function openDashboard() {
+  document.getElementById('setup-screen').style.display = 'none';
+  const dash = document.getElementById('dashboard');
+  dash.style.display = 'flex';
+
+  // Build share link
+  const base = location.origin + location.pathname;
+  const fbUrl = document.getElementById('fb-url').value.trim();
+  let shareLink = `${base}?mode=receive&key=${encodeURIComponent(sessionKey)}`;
+  if (!isDemo && fbUrl) shareLink += `&fb=${encodeURIComponent(fbUrl)}`;
+
+  document.getElementById('share-link-display').textContent = shareLink;
+  document.getElementById('wa-share-btn').href =
+    `https://wa.me/?text=${encodeURIComponent('📍 Share your live location with me: ' + shareLink)}`;
+
+  waitForMaps(() => initMap());
+
+  if (!isDemo) {
+    listenForLocation();
+  } else {
+    startDemoListener();
+  }
+}
+
+// ══════════════════════════════════════════
+//  MAP
+// ══════════════════════════════════════════
+function initMap() {
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 20.5937, lng: 78.9629 },
+    zoom: 5,
+    mapTypeId: 'roadmap',
+    styles: [
+      { elementType:"geometry", stylers:[{color:"#1d2c4d"}] },
+      { elementType:"labels.text.fill", stylers:[{color:"#8ec3b9"}] },
+      { elementType:"labels.text.stroke", stylers:[{color:"#1a3646"}] },
+      { featureType:"water", elementType:"geometry", stylers:[{color:"#0e1626"}] },
+      { featureType:"road", elementType:"geometry", stylers:[{color:"#304a7d"}] },
+      { featureType:"road", elementType:"geometry.stroke", stylers:[{color:"#255763"}] },
+      { featureType:"poi", elementType:"geometry", stylers:[{color:"#283d6a"}] },
+      { featureType:"transit", elementType:"geometry", stylers:[{color:"#2f3948"}] },
+      { featureType:"administrative", elementType:"geometry.stroke", stylers:[{color:"#4b6878"}] },
+    ]
+  });
+}
+
+function updateMapLocation(lat, lng, label) {
+  if (!map) return;
+  const pos = { lat, lng };
+  document.getElementById('no-location-overlay').style.display = 'none';
+
+  if (!marker) {
+    marker = new google.maps.Marker({
+      position: pos, map,
+      title: label || 'Live Location',
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 12,
+        fillColor: '#00ff88',
+        fillOpacity: 1,
+        strokeColor: '#fff',
+        strokeWeight: 2,
+      }
+    });
+  } else {
+    marker.setPosition(pos);
+  }
+  map.panTo(pos);
+  map.setZoom(15);
+
+  // Update stats
+  document.getElementById('stat-lat').textContent  = lat.toFixed(5);
+  document.getElementById('stat-lng').textContent  = lng.toFixed(5);
+  document.getElementById('stat-time').textContent = new Date().toLocaleTimeString();
+  document.getElementById('live-coords').textContent = `${lat.toFixed(5)}\n${lng.toFixed(5)}`;
+
+  // Status
+  document.getElementById('status-dot').className  = 'dot live';
+  document.getElementById('status-text').textContent = '● Live tracking';
+}
+
+// ══════════════════════════════════════════
+//  FIREBASE LISTENER (Dashboard side)
+// ══════════════════════════════════════════
+function listenForLocation() {
+  if (!firebaseDB) return;
+  const locRef = firebaseRef(firebaseDB, `livetrace/${sessionKey}`);
+  firebaseOnValue(locRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
+    // Could be a single location or multiple devices
+    if (data.lat) {
+      handleLocationUpdate('Device', data.lat, data.lng, data.accuracy, data.ts);
+    } else {
+      // Multiple devices keyed by deviceId
+      Object.entries(data).forEach(([deviceId, loc]) => {
+        if (loc.lat) handleLocationUpdate(deviceId, loc.lat, loc.lng, loc.accuracy, loc.ts);
+      });
+    }
+  });
+}
+
+function handleLocationUpdate(deviceId, lat, lng, accuracy, ts) {
+  trackers[deviceId] = { lat, lng, accuracy, ts };
+  updateMapLocation(lat, lng, deviceId);
+  document.getElementById('stat-acc').textContent = accuracy ? Math.round(accuracy) + 'm' : '—';
+  renderTrackerList();
+}
+
+function renderTrackerList() {
+  const list = document.getElementById('tracker-list');
+  const entries = Object.entries(trackers);
+  if (!entries.length) return;
+  list.innerHTML = entries.map(([id, data]) => {
+    const time = data.ts ? new Date(data.ts).toLocaleTimeString() : '';
+    const initial = id[0].toUpperCase();
+    return `<div class="tracker-item active" onclick="focusTracker('${id}')">
+      <div class="tracker-avatar">${initial}</div>
+      <div class="tracker-info">
+        <div class="tracker-name">${id}</div>
+        <div class="tracker-time">${time}</div>
+      </div>
+      <div class="dot live"></div>
+    </div>`;
+  }).join('');
+}
+
+window.focusTracker = function(id) {
+  if (trackers[id] && map) {
+    map.panTo({ lat: trackers[id].lat, lng: trackers[id].lng });
+    map.setZoom(16);
+  }
+};
+
+// ══════════════════════════════════════════
+//  DEMO MODE
+// ══════════════════════════════════════════
+function startDemoListener() {
+  let lat = 18.5204, lng = 73.8567; // Pune
+  waitForMaps(() => {
+    setTimeout(() => {
+      handleLocationUpdate('Demo Device', lat, lng, 10, Date.now());
+      demoInterval = setInterval(() => {
+        lat += (Math.random() - 0.5) * 0.001;
+        lng += (Math.random() - 0.5) * 0.001;
+        handleLocationUpdate('Demo Device', lat, lng, 10, Date.now());
+      }, 3000);
+    }, 1500);
+  });
+}
+
+// ══════════════════════════════════════════
+//  RECEIVER PAGE
+// ══════════════════════════════════════════
+function showReceiver(key, fbUrl) {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('receiver-screen').style.display = 'flex';
+  window._receiverKey   = key;
+  window._receiverFbUrl = fbUrl;
+}
+
+window.startSharingLocation = function() {
+  const btn = document.getElementById('share-loc-btn');
+  const status = document.getElementById('share-status');
+  btn.disabled = true;
+  btn.textContent = 'Getting location...';
+  status.className = 'info';
+  status.textContent = '⏳ Requesting GPS permission...';
+  status.style.display = 'block';
+
+  if (!navigator.geolocation) {
+    status.className = 'error';
+    status.textContent = '❌ Geolocation not supported on this browser.';
+    btn.disabled = false;
+    return;
+  }
+
+  const fbUrl = window._receiverFbUrl;
+  const key   = window._receiverKey;
+
+  const sendLocation = (position) => {
+    const { latitude: lat, longitude: lng, accuracy } = position.coords;
+    const payload = { lat, lng, accuracy, ts: Date.now() };
+
+    status.className = 'success';
+    status.textContent = `✅ Sharing live location\n📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+    if (fbUrl && window._fbReady) {
+      const deviceId = 'device-' + (localStorage.getItem('ltDeviceId') || (() => {
+        const id = Math.random().toString(36).substr(2,8);
+        localStorage.setItem('ltDeviceId', id);
+        return id;
+      })());
+      const app = window._fb.initializeApp({ databaseURL: decodeURIComponent(fbUrl) }, 'recv-' + Date.now());
+      const db  = window._fb.getDatabase(app);
+      const locRef = window._fb.ref(db, `livetrace/${key}/${deviceId}`);
+      window._fb.set(locRef, payload);
+    }
+  };
+
+  const errHandler = (err) => {
+    status.className = 'error';
+    status.textContent = `❌ ${err.message}`;
+    btn.disabled = false;
+    btn.textContent = 'Retry';
+  };
+
+  watchId = navigator.geolocation.watchPosition(sendLocation, errHandler, {
+    enableHighAccuracy: true,
+    maximumAge: 5000,
+    timeout: 15000,
+  });
+
+  btn.textContent = '📡 Sharing live...';
+};
+
+// ══════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════
+window.copyLink = function() {
+  const link = document.getElementById('share-link-display').textContent;
+  navigator.clipboard.writeText(link).then(() => showToast('Link copied!'));
+};
+
+window.resetApp = function() {
+  if (demoInterval) clearInterval(demoInterval);
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+  location.href = location.pathname;
+};
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function waitForFB(cb) {
+  if (window._fbReady) cb();
+  else window.addEventListener('fbReady', cb, { once: true });
+}
+function waitForMaps(cb) {
+  if (window._mapsReady) cb();
+  else window.addEventListener('mapsReady', cb, { once: true });
+}
+</script>
+</body>
+</html>
